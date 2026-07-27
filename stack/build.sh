@@ -1,11 +1,13 @@
 #!/bin/bash
 # Fresh-machine bootstrap: installs everything this stack needs (k3s, helm,
-# nerdctl, buildkit), then brings the whole stack up via up.sh.
+# nerdctl, buildkit), pulls Odosian and KubeVision source from their own
+# GitHub repos, then brings the whole stack up via up.sh.
 #
 # Meant to be handed to someone who has never set this machine up before —
-# just clone this repo and run stack/build.sh. It expects to find odosian/
-# and elastic-siem-chart/ (and optionally kubevision/) as sibling folders
-# next to stack/, i.e. this script's own repo checkout.
+# just clone THIS repo (which only contains stack/, including this script
+# and the bundled elastic-siem-chart/) and run stack/build.sh. Odosian and
+# KubeVision live in their own repos and get cloned as siblings of stack/
+# the first time you run this.
 #
 # KubeVision is optional. Answer the prompt, or skip it with a flag:
 #   ./build.sh --with-kubevision
@@ -16,7 +18,10 @@ STACK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$STACK_DIR/.." && pwd)"
 ODOSIAN_DIR="$REPO_ROOT/odosian"
 KUBEVISION_DIR="$REPO_ROOT/kubevision"
-ECK_CHART_DIR="$REPO_ROOT/elastic-siem-chart"
+ECK_CHART_DIR="$STACK_DIR/elastic-siem-chart"
+
+ODOSIAN_REPO="https://github.com/MohdAlkafaween/odosian.git"
+KUBEVISION_REPO="https://github.com/MohdAlkafaween/kubevision.git"
 
 NERDCTL_VERSION="2.3.5"
 BUILDKIT_VERSION="0.31.2"
@@ -24,18 +29,27 @@ BUILDKIT_VERSION="0.31.2"
 log() { echo -e "\n\033[1;35m==> $1\033[0m"; }
 err() { echo -e "\033[1;31mERROR: $1\033[0m" >&2; }
 
-log "[0/7] Checking required project folders"
-missing=0
-for d in "$ODOSIAN_DIR" "$ECK_CHART_DIR"; do
-  if [ ! -d "$d" ]; then
-    err "Missing $d — did you clone the whole repo? This script expects odosian/ and elastic-siem-chart/ next to stack/."
-    missing=1
-  fi
-done
-[ "$missing" = "1" ] && exit 1
-echo "Found odosian/ and elastic-siem-chart/."
+if [ ! -d "$ECK_CHART_DIR" ]; then
+  err "Missing $ECK_CHART_DIR — this looks like an incomplete checkout of the grad repo."
+  exit 1
+fi
 
-# --- KubeVision: optional ---
+log "[0/7] Base packages (curl, openssl, python3, git)"
+if ! command -v curl &>/dev/null || ! command -v openssl &>/dev/null || ! command -v python3 &>/dev/null || ! command -v git &>/dev/null; then
+  sudo apt-get update -qq
+  sudo apt-get install -y -qq curl openssl ca-certificates python3 git
+else
+  echo "Already present."
+fi
+
+log "[1/7] Odosian / KubeVision source"
+if [ -d "$ODOSIAN_DIR" ]; then
+  echo "odosian/ already present."
+else
+  echo "Cloning odosian..."
+  git clone --quiet "$ODOSIAN_REPO" "$ODOSIAN_DIR"
+fi
+
 WITH_KUBEVISION=""
 for arg in "$@"; do
   case "$arg" in
@@ -50,19 +64,15 @@ if [ -z "$WITH_KUBEVISION" ]; then
     *) WITH_KUBEVISION="no" ;;
   esac
 fi
-if [ "$WITH_KUBEVISION" = "yes" ] && [ ! -d "$KUBEVISION_DIR" ]; then
-  err "You chose KubeVision but $KUBEVISION_DIR doesn't exist. Skipping it instead."
-  WITH_KUBEVISION="no"
+if [ "$WITH_KUBEVISION" = "yes" ]; then
+  if [ -d "$KUBEVISION_DIR" ]; then
+    echo "kubevision/ already present."
+  else
+    echo "Cloning kubevision..."
+    git clone --quiet "$KUBEVISION_REPO" "$KUBEVISION_DIR"
+  fi
 fi
 echo "KubeVision: $WITH_KUBEVISION"
-
-log "[1/7] Base packages (curl, openssl, python3)"
-if ! command -v curl &>/dev/null || ! command -v openssl &>/dev/null || ! command -v python3 &>/dev/null; then
-  sudo apt-get update -qq
-  sudo apt-get install -y -qq curl openssl ca-certificates python3
-else
-  echo "Already present."
-fi
 
 log "[2/7] k3s"
 if ! command -v k3s &>/dev/null; then

@@ -7,7 +7,7 @@ STACK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$STACK_DIR/.." && pwd)"
 ODOSIAN_DIR="$REPO_ROOT/odosian"
 K8S_DIR="$ODOSIAN_DIR/k8s"
-ECK_CHART_DIR="$REPO_ROOT/elastic-siem-chart"
+ECK_CHART_DIR="$STACK_DIR/elastic-siem-chart"
 CERTS_DIR="$ODOSIAN_DIR/certs"
 KUBEVISION_DIR="$REPO_ROOT/kubevision"
 
