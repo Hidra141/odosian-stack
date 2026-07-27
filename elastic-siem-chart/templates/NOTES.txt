@@ -1,0 +1,14 @@
+=== Elastic SIEM (single-node) Deployed ===
+
+Elasticsearch: {{ .Values.elasticsearch.name }} (1 pod, all roles)
+Kibana:        {{ .Values.kibana.name }} (1 pod)
+Fleet Server:  {{ .Values.fleet.name }} (1 pod)
+
+Verify:
+  kubectl get elasticsearch {{ .Values.elasticsearch.name }}
+  kubectl get kibana {{ .Values.kibana.name }}
+  kubectl get agent {{ .Values.fleet.name }}
+  kubectl get pods -l common.k8s.elastic.co/type
+
+Elastic user password:
+  kubectl get secret {{ .Values.elasticsearch.name }}-es-elastic-user -o go-template='{{"{{"}}.data.elastic | base64decode{{"}}"}}'

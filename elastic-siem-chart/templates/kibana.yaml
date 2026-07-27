@@ -1,0 +1,35 @@
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: {{ .Values.kibana.name }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.kibana.name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+spec:
+  version: {{ .Values.version }}
+  count: {{ .Values.kibana.count }}
+  elasticsearchRef:
+    name: {{ .Values.elasticsearch.name }}
+  config:
+    xpack.encryptedSavedObjects.encryptionKey: {{ .Values.kibana.encryptionKey | quote }}
+    xpack.security.encryptionKey: {{ .Values.kibana.encryptionKey | quote }}
+    xpack.reporting.encryptionKey: {{ .Values.kibana.encryptionKey | quote }}
+  http:
+    service:
+      spec:
+        type: {{ .Values.kibana.serviceType }}
+  podTemplate:
+    spec:
+      containers:
+      - name: kibana
+        resources:
+          requests:
+            memory: {{ .Values.kibana.resources.requests.memory }}
+            cpu: {{ .Values.kibana.resources.requests.cpu }}
+          limits:
+            memory: {{ .Values.kibana.resources.limits.memory }}
+            cpu: {{ .Values.kibana.resources.limits.cpu }}
+        env:
+        - name: NODE_OPTIONS
+          value: "--max-old-space-size={{ .Values.kibana.maxOldSpaceSize }}"

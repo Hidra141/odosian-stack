@@ -1,0 +1,14 @@
+apiVersion: v2
+name: elastic-siem
+description: Minimal single-node Elastic SIEM (Elasticsearch, Kibana, Fleet Server) deployed via ECK for Odosian integration
+type: application
+version: 1.0.0
+appVersion: "8.18.3"
+keywords:
+  - elasticsearch
+  - kibana
+  - fleet-server
+  - eck
+  - siem
+maintainers:
+  - name: Moh'd

@@ -1,0 +1,49 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: {{ .Values.elasticsearch.name }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.elasticsearch.name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+spec:
+  version: {{ .Values.version }}
+  http:
+    service:
+      spec:
+        type: {{ .Values.elasticsearch.serviceType }} 
+  nodeSets:
+  {{- range $tierName, $tier := .Values.elasticsearch.nodeSets }}
+  - name: {{ $tierName }}
+    count: {{ $tier.count }}
+    config:
+      node.roles: {{ $tier.roles | toJson }}
+      xpack.ml.enabled: false
+      {{- range $key, $val := $tier.extraConfig }}
+      {{ $key }}: {{ $val }}
+      {{- end }}
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          resources:
+            requests:
+              memory: {{ $tier.resources.requests.memory }}
+              cpu: {{ $tier.resources.requests.cpu }}
+            limits:
+              memory: {{ $tier.resources.limits.memory }}
+              cpu: {{ $tier.resources.limits.cpu }}
+          env:
+          - name: ES_JAVA_OPTS
+            value: "-Xms{{ $tier.heap }} -Xmx{{ $tier.heap }}"
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        storageClassName: {{ $tier.storage.storageClassName }}
+        resources:
+          requests:
+            storage: {{ $tier.storage.size }}
+  {{- end }}

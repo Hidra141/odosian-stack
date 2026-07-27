@@ -1,0 +1,302 @@
+generator client {
+  provider = "prisma-client"
+  output   = "./generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id                       String    @id @default(uuid())
+  email                    String    @unique
+  name                     String
+  password                 String
+  role                     String    @default("ANALYST")
+  isActive                 Boolean   @default(true)
+  emailVerified            Boolean   @default(false)
+  verificationToken        String?
+  verificationTokenExpiry  DateTime?
+  lastLoginAt              DateTime?
+  failedAttempts           Int       @default(0)
+  lockedUntil              DateTime?
+  resetToken               String?
+  resetTokenExpiry         DateTime?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  rules             Rule[]
+  analyses          Analysis[]
+  auditLogs         AuditLog[]
+  projects          Project[]
+  attackSimulations AttackSimulation[]
+}
+
+model Rule {
+  id                 String   @id @default(uuid())
+  title              String
+  description        String   @default("")
+  ruleType           String   @default("query")
+  severity           String   @default("medium")
+  riskScore          Int      @default(50)
+  query              String
+  language           String   @default("kuery")
+  index              String   @default("")
+  tags               String   @default("[]")
+  client             String   @default("")
+  category           String   @default("")
+  status             String   @default("draft")
+  covered            Boolean  @default(false)
+  coveredAt          DateTime?
+  version            Int      @default(1)
+  parentRuleId       String?
+  investigationGuide String   @default("")
+  falsePositives     String   @default("[]")
+  references         String   @default("[]")
+  elasticRuleId      String?
+  interval           String   @default("5m")
+  fromTime           String   @default("now-6m")
+  maxSignals         Int      @default(100)
+  authorId           String
+  author             User     @relation(fields: [authorId], references: [id])
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  analyses      Analysis[]
+  mitreMappings MitreMapping[]
+  projectRules  ProjectRule[]
+  customFields  RuleCustomField[]
+}
+
+model Analysis {
+  id            String   @id @default(uuid())
+  ruleId        String?
+  rule          Rule?    @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  analysisType  String
+  inputQuery    String
+  outputQuery   String   @default("")
+  score         Int      @default(0)
+  rating        String   @default("")
+  findings      String   @default("[]")
+  suggestions   String   @default("[]")
+  feedback      String   @default("")
+  mitreMappings String   @default("[]")
+  strengths     String   @default("[]")
+  weaknesses    String   @default("[]")
+  evasionRisks  String   @default("[]")
+  fpRisk        String   @default("low")
+  modelUsed     String   @default("")
+  tokensUsed    Int      @default(0)
+  latencyMs     Int      @default(0)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  createdAt     DateTime @default(now())
+}
+
+model MitreMapping {
+  id               String   @id @default(uuid())
+  ruleId           String
+  rule             Rule     @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  tacticId         String
+  tacticName       String
+  techniqueId      String
+  techniqueName    String
+  subTechniqueId   String?
+  subTechniqueName String?
+  confidence       Int      @default(80)
+  createdAt        DateTime @default(now())
+}
+
+model Project {
+  id          String   @id @default(uuid())
+  name        String
+  description String   @default("")
+  ownerId     String
+  owner       User     @relation(fields: [ownerId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  projectRules ProjectRule[]
+}
+
+model ProjectRule {
+  id        String  @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  ruleId    String
+  rule      Rule    @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, ruleId])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  action     String
+  targetType String   @default("")
+  targetId   String   @default("")
+  details    String   @default("{}")
+  ipAddress  String   @default("")
+  createdAt  DateTime @default(now())
+}
+
+model Setting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  category  String   @default("general")
+  label     String   @default("")
+  updatedAt DateTime @updatedAt
+}
+
+model Prompt {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  systemPrompt String
+  description  String   @default("")
+  isActive     Boolean  @default(true)
+  isDefault    Boolean  @default(false)
+  version      Int      @default(1)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model AIProvider {
+  id                 String   @id @default(uuid())
+  name               String   @unique
+  baseUrl            String
+  apiKey             String
+  model              String
+  isActive           Boolean  @default(true)
+  isDefault          Boolean  @default(false)
+  maxTokens          Int      @default(4096)
+  temperature        Float    @default(0.3)
+  costPerInputToken  Float    @default(0)
+  costPerOutputToken Float    @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model RuleTemplate {
+  id           String   @id @default(uuid())
+  name         String
+  description  String   @default("")
+  category     String   @default("general")
+  baseQuery    String
+  language     String   @default("kuery")
+  ruleType     String   @default("query")
+  variables    String   @default("[]")
+  tags         String   @default("[]")
+  mitreTactics String   @default("[]")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model CustomFieldDefinition {
+  id           String  @id @default(uuid())
+  fieldName    String  @unique
+  label        String
+  fieldType    String  @default("text")
+  options      String  @default("[]")
+  required     Boolean @default(false)
+  defaultValue String  @default("")
+  sortOrder    Int     @default(0)
+}
+
+model RuleCustomField {
+  id         String @id @default(uuid())
+  ruleId     String
+  rule       Rule   @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  fieldName  String
+  fieldValue String
+  fieldType  String @default("text")
+
+  @@unique([ruleId, fieldName])
+}
+
+model Webhook {
+  id          String    @id @default(uuid())
+  name        String
+  url         String
+  events      String    @default("[]")
+  secret      String    @default("")
+  isActive    Boolean   @default(true)
+  headers     String    @default("{}")
+  lastFiredAt DateTime?
+  lastStatus  Int?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model RateLimit {
+  id          String   @id @default(uuid())
+  userId      String
+  endpoint    String
+  count       Int      @default(0)
+  windowStart DateTime @default(now())
+
+  @@unique([userId, endpoint])
+}
+
+model KaliConnection {
+  id        String   @id @default(uuid())
+  name      String   @default("Default Kali")
+  host      String
+  port      Int      @default(22)
+  username  String   @default("kali")
+  authType  String   @default("password")
+  isActive  Boolean  @default(true)
+  lastUsed  DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  simulations AttackSimulation[]
+}
+
+model AttackSimulation {
+  id               String          @id @default(uuid())
+  techniqueId      String
+  techniqueName    String
+  tacticId         String
+  tacticName       String
+  status           String          @default("pending")
+  aiPrompt         String          @default("")
+  aiResponse       String          @default("")
+  commands         String          @default("[]")
+  commandOutputs   String          @default("[]")
+  notes            String          @default("")
+  kaliConnectionId String?
+  kaliConnection   KaliConnection? @relation(fields: [kaliConnectionId], references: [id], onDelete: SetNull)
+  userId           String
+  user             User            @relation(fields: [userId], references: [id])
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+}
+
+model ElasticConnection {
+  id          String   @id @default(uuid())
+  name        String   @default("Default Elastic")
+  kibanaUrl   String
+  apiKey      String
+  spaceId     String   @default("default")
+  cloudId     String   @default("")
+  verifySsl   Boolean  @default(true)
+  isActive    Boolean  @default(true)
+  lastTestedAt DateTime?
+  lastStatus  String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model MitreAttackPrompt {
+  id            String   @id @default(uuid())
+  techniqueId   String   @unique
+  techniqueName String
+  tacticId      String
+  tacticName    String
+  systemPrompt  String
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
