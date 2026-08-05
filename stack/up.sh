@@ -40,7 +40,18 @@ else
   echo "MetalLB already installed."
 fi
 if ! kubectl get ipaddresspool falcon-pool -n metallb-system &>/dev/null; then
-  kubectl apply -f "$STACK_DIR/metallb-pool.yaml"
+  echo "Applying MetalLB IP pool (retrying if the webhook isn't up yet)..."
+  for i in $(seq 1 15); do
+    if kubectl apply -f "$STACK_DIR/metallb-pool.yaml" 2>/tmp/metallb-pool-apply.err; then
+      break
+    fi
+    if [ "$i" = 15 ]; then
+      cat /tmp/metallb-pool-apply.err >&2
+      echo "MetalLB webhook never became reachable — see error above." >&2
+      exit 1
+    fi
+    sleep 2
+  done
 fi
 
 echo "Waiting for Traefik to get a LoadBalancer IP..."
@@ -267,6 +278,37 @@ EOF
     [ -n "$KV_IP" ] && break
     sleep 2
   done
+
+  # KubeVision has no seeded account of its own — the first person to hit
+  # /register becomes its one and only admin, and the password is bcrypt-hashed
+  # (unrecoverable). Seed a known default admin the first time there are zero
+  # users, so there's always a working login to report below. If an account
+  # already exists (yours, or a previously-seeded default), leave it alone and
+  # just report its email — we can't know/print a password we didn't set.
+  KV_SEED_OUT=$(kubectl -n kubevision exec deploy/kubevision -- node -e "
+const Database = require('better-sqlite3');
+const bcrypt = require('bcryptjs');
+const db = new Database('/app/data/kubevision.db');
+const count = db.prepare('SELECT COUNT(*) as c FROM User').get().c;
+if (count === 0) {
+  const hash = bcrypt.hashSync('Admin@123!', 12);
+  const id = 'seed' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+  const now = new Date().toISOString().replace('Z', '+00:00');
+  db.prepare('INSERT INTO User (id, email, name, passwordHash, role, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .run(id, 'admin@kubevision.local', 'Admin', hash, 'admin', now, now);
+  console.log('SEEDED');
+} else {
+  console.log('EXISTS:' + db.prepare('SELECT email FROM User LIMIT 1').get().email);
+}
+" 2>/dev/null || echo "ERR")
+
+  if [[ "$KV_SEED_OUT" == SEEDED* ]]; then
+    KV_LOGIN_LINE="KubeVision login: admin@kubevision.local / Admin@123!"
+  elif [[ "$KV_SEED_OUT" == EXISTS:* ]]; then
+    KV_LOGIN_LINE="KubeVision login: already configured (${KV_SEED_OUT#EXISTS:}) — use your existing password"
+  else
+    KV_LOGIN_LINE="KubeVision login: unavailable (couldn't reach the database yet)"
+  fi
 fi
 
 log "[10/10] Stack is up"
@@ -278,6 +320,7 @@ ELASTIC_PW=$(kubectl get secret es-cluster-es-elastic-user -o jsonpath='{.data.e
 
 if [ "${SKIP_KUBEVISION:-0}" = "1" ]; then
   KV_LINE="KubeVision:     not installed (skipped)"
+  KV_LOGIN_LINE="KubeVision login: not installed (skipped)"
 else
   KV_LINE="KubeVision:     http://${KV_IP:-pending}/"
 fi
@@ -291,6 +334,7 @@ Elasticsearch:  https://${ES_IP}:9200
 Fleet Server:   https://${FS_IP}:8220
 
 Odosian login:  admin@odosian.com / Admin@123!
+${KV_LOGIN_LINE}
 
 Run '~/stack/status.sh' anytime to see this again.
 EOF
