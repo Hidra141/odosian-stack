@@ -40,6 +40,8 @@ fi
 echo
 read -rp "Rebuild images and redeploy now? [y/N] " ans
 case "$ans" in
-  [Yy]*) bash "$STACK_DIR/up.sh" --rebuild ;;
+  # up.sh decides whether to build/deploy KubeVision itself — if
+  # --with-kubevision/--no-kubevision wasn't passed here, it'll ask.
+  [Yy]*) bash "$STACK_DIR/up.sh" --rebuild "${1:-}" ;;
   *) echo "Skipped. Run 'stack/up.sh --rebuild' whenever you're ready to deploy the update." ;;
 esac

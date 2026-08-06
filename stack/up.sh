@@ -13,6 +13,47 @@ KUBEVISION_DIR="$REPO_ROOT/kubevision"
 
 log() { echo -e "\n\033[1;36m==> $1\033[0m"; }
 
+# --- Flags & KubeVision on/off ---------------------------------------------
+# Usage: up.sh [--rebuild] [--with-kubevision | --no-kubevision]
+REBUILD=0
+KUBEVISION_CHOICE=""
+for arg in "$@"; do
+  case "$arg" in
+    --rebuild) REBUILD=1 ;;
+    --with-kubevision) KUBEVISION_CHOICE=1 ;;
+    --no-kubevision) KUBEVISION_CHOICE=0 ;;
+  esac
+done
+
+if [ -z "$KUBEVISION_CHOICE" ]; then
+  if [ -n "${SKIP_KUBEVISION:-}" ]; then
+    # Set by a caller (build.sh, update.sh) that already asked — don't ask again.
+    [ "$SKIP_KUBEVISION" = "1" ] && KUBEVISION_CHOICE=0 || KUBEVISION_CHOICE=1
+  elif [ -t 0 ] && [ -d "$KUBEVISION_DIR" ]; then
+    read -rp "Build and deploy KubeVision too? [Y/n] " KV_ANS
+    case "$KV_ANS" in
+      [Nn]*) KUBEVISION_CHOICE=0 ;;
+      *) KUBEVISION_CHOICE=1 ;;
+    esac
+  elif [ -t 0 ]; then
+    echo "KubeVision source not found at $KUBEVISION_DIR — skipping (run 'stack/update.sh --with-kubevision' to pull it in first)."
+    KUBEVISION_CHOICE=0
+  else
+    KUBEVISION_CHOICE=1
+  fi
+fi
+
+if [ "$KUBEVISION_CHOICE" = "1" ] && [ ! -d "$KUBEVISION_DIR" ]; then
+  echo "KubeVision source not found at $KUBEVISION_DIR — skipping (run 'stack/update.sh --with-kubevision' to pull it in first)."
+  KUBEVISION_CHOICE=0
+fi
+
+if [ "$KUBEVISION_CHOICE" = "1" ]; then
+  SKIP_KUBEVISION=0
+else
+  SKIP_KUBEVISION=1
+fi
+
 log "[1/10] Starting k3s"
 sudo systemctl start k3s
 echo "Waiting for node to be Ready..."
@@ -172,7 +213,7 @@ if ! sudo k3s ctr -n k8s.io images ls -q 2>/dev/null | grep -q "^docker.io/libra
 else
   echo "Odosian image already built. Pass --rebuild to force a rebuild."
 fi
-if [ "${1:-}" = "--rebuild" ]; then
+if [ "$REBUILD" = "1" ]; then
   echo "Rebuilding image..."
   sudo nerdctl --address /run/k3s/containerd/containerd.sock --namespace k8s.io \
     build --buildkit-host unix:///run/buildkit/buildkitd.sock -t odosian:latest "$ODOSIAN_DIR"
@@ -236,7 +277,7 @@ else
   else
     echo "KubeVision image already built. Pass --rebuild to force a rebuild of everything."
   fi
-  if [ "${1:-}" = "--rebuild" ]; then
+  if [ "$REBUILD" = "1" ]; then
     sudo nerdctl --address /run/k3s/containerd/containerd.sock --namespace k8s.io \
       build --buildkit-host unix:///run/buildkit/buildkitd.sock -t kubevision:latest "$KUBEVISION_DIR"
     kubectl -n kubevision rollout restart deployment/kubevision 2>/dev/null || true
