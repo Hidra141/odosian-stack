@@ -129,16 +129,14 @@ if ! helm status elastic-operator -n elastic-system &>/dev/null; then
     --set installCRDs=false \
     --set resources.requests.memory=256Mi --set resources.requests.cpu=100m \
     --set resources.limits.memory=512Mi --set resources.limits.cpu=500m
-  # `kubectl wait` needs the resource to already exist — it errors
-  # immediately with "no matching resources found" instead of waiting for
-  # one to be created, and helm install can return before the pod is
-  # actually scheduled. Poll for existence first, then wait for Ready.
-  echo "Waiting for the ECK operator pod to be scheduled..."
-  for i in $(seq 1 30); do
-    kubectl -n elastic-system get pod -l control-plane=elastic-operator 2>/dev/null | grep -q elastic-operator && break
-    sleep 2
-  done
-  kubectl -n elastic-system wait --for=condition=Ready pod -l control-plane=elastic-operator --timeout=120s
+  # `kubectl wait -l selector` needs a matching pod to already exist — it
+  # errors immediately with "no matching resources found" instead of
+  # waiting for one to be created. The operator is a StatefulSet named
+  # "elastic-operator" (Helm creates that object synchronously as part of
+  # install, so it's always there by now); `rollout status` targets it by
+  # name and correctly waits for its pod to be created AND become ready.
+  echo "Waiting for the ECK operator to be ready..."
+  kubectl -n elastic-system rollout status statefulset/elastic-operator --timeout=180s
 else
   echo "ECK operator already installed."
 fi
