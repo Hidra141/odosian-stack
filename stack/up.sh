@@ -285,7 +285,7 @@ kubectl apply -f "$K8S_DIR/deployment.yaml"
 kubectl apply -f "$K8S_DIR/service.yaml"
 kubectl apply -f "$K8S_DIR/ingress.yaml"
 kubectl -n odosian scale deployment odosian --replicas=1 2>/dev/null || true
-kubectl -n odosian rollout status deployment/odosian --timeout=120s
+kubectl -n odosian rollout status deployment/odosian --timeout=300s
 
 log "[9/10] KubeVision"
 KV_IP=""
@@ -333,7 +333,7 @@ EOF
   kubectl -n kubevision delete secret kubevision-tls --ignore-not-found >/dev/null 2>&1 || true
 
   helm upgrade --install kubevision "$KUBEVISION_DIR/chart" -n kubevision -f "$KUBEVISION_DIR/chart/values.local.yaml"
-  kubectl -n kubevision rollout status deployment/kubevision --timeout=120s
+  kubectl -n kubevision rollout status deployment/kubevision --timeout=300s
 
   echo "Waiting for KubeVision to get a LoadBalancer IP..."
   for i in $(seq 1 30); do
