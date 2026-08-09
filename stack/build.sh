@@ -77,7 +77,12 @@ echo "KubeVision: $WITH_KUBEVISION"
 log "[2/7] k3s"
 if ! command -v k3s &>/dev/null; then
   echo "Installing k3s..."
-  curl -sfL https://get.k3s.io | sh -
+  # k3s writes its kubeconfig root-only (0600) by default, so plain `kubectl`
+  # fails with "permission denied" for any non-root user unless KUBECONFIG
+  # points somewhere else — which only works in shells that actually sourced
+  # the .bashrc line below. Making the file itself world-readable means
+  # kubectl just works everywhere, regardless of shell/session state.
+  curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--write-kubeconfig-mode 644" sh -
 else
   echo "k3s already installed."
 fi
@@ -85,6 +90,10 @@ sudo systemctl enable --now k3s
 echo "Waiting for node to be Ready..."
 until sudo k3s kubectl get nodes 2>/dev/null | grep -q " Ready"; do sleep 2; done
 echo "k3s is up."
+
+# Safety net for k3s installs that predate the flag above (or were installed
+# by some other means) — always make sure the kubeconfig is readable.
+sudo chmod 644 /etc/rancher/k3s/k3s.yaml 2>/dev/null || true
 
 mkdir -p "$HOME/.kube"
 if [ ! -f "$HOME/.kube/config" ]; then

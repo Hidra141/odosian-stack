@@ -56,6 +56,10 @@ fi
 
 log "[1/10] Starting k3s"
 sudo systemctl start k3s
+# Safety net: if the kubeconfig is still root-only (0600) — e.g. k3s was
+# installed by something other than build.sh's INSTALL_K3S_EXEC flag — every
+# bare `kubectl` call below silently fails with permission denied.
+sudo chmod 644 /etc/rancher/k3s/k3s.yaml 2>/dev/null || true
 echo "Waiting for node to be Ready..."
 until kubectl get nodes 2>/dev/null | grep -q " Ready"; do sleep 2; done
 echo "k3s is up."
