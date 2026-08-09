@@ -4,6 +4,15 @@
 # repo — build.sh only clones them once; this is what syncs updates in.
 set -euo pipefail
 
+# Never run this with sudo/as root — it calls sudo itself (via up.sh) where
+# needed. Running the whole script as root makes every file it touches
+# (git pull/clone) root-owned, breaking the next normal-user run.
+if [ "$(id -u)" = "0" ]; then
+  echo "Don't run this as root or with sudo — it calls sudo itself where needed." >&2
+  echo "Run it as your normal user: ./update.sh" >&2
+  exit 1
+fi
+
 STACK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$STACK_DIR/.." && pwd)"
 ODOSIAN_DIR="$REPO_ROOT/odosian"

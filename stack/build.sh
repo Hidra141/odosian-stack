@@ -14,6 +14,17 @@
 #   ./build.sh --no-kubevision
 set -euo pipefail
 
+# Never run this with sudo/as root — it calls sudo itself for the handful of
+# commands that actually need root (systemctl, apt, writing to /etc). Running
+# the whole script as root instead makes every file it touches (git clone,
+# the repo checkout itself, etc.) root-owned, so the very next normal-user
+# run fails with "Permission denied" on those files.
+if [ "$(id -u)" = "0" ]; then
+  echo "Don't run this as root or with sudo — it calls sudo itself where needed." >&2
+  echo "Run it as your normal user: ./build.sh" >&2
+  exit 1
+fi
+
 STACK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$STACK_DIR/.." && pwd)"
 ODOSIAN_DIR="$REPO_ROOT/odosian"

@@ -3,6 +3,15 @@
 # Safe to re-run — every step is idempotent and skips work that's already done.
 set -euo pipefail
 
+# Never run this with sudo/as root — it calls sudo itself where needed.
+# Running the whole script as root makes every file it touches root-owned,
+# breaking the next normal-user run (e.g. sed -i on metallb-pool.yaml).
+if [ "$(id -u)" = "0" ]; then
+  echo "Don't run this as root or with sudo — it calls sudo itself where needed." >&2
+  echo "Run it as your normal user: ./up.sh" >&2
+  exit 1
+fi
+
 STACK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$STACK_DIR/.." && pwd)"
 ODOSIAN_DIR="$REPO_ROOT/odosian"
