@@ -1,11 +1,11 @@
-# grad
+# odosian-stack
 
 Deployment tooling for a self-hosted stack: **Odosian** (detection rule coverage app), an **Elastic SIEM** backend (Elasticsearch, Kibana, Fleet Server via ECK), and optionally **KubeVision** (a live Kubernetes topology viewer) — all deployed to a local single-node k3s cluster.
 
 This repo contains only `stack/` — the scripts that install prerequisites and deploy everything. Odosian and KubeVision live in their own repos and get pulled in automatically:
 
-- https://github.com/MohdAlkafaween/odosian
-- https://github.com/MohdAlkafaween/kubevision
+- https://github.com/Hidra141/odosian
+- https://github.com/Hidra141/kubevision
 
 ## Layout
 
@@ -29,8 +29,8 @@ stack/
 ## Quickstart
 
 ```bash
-git clone https://github.com/MohdAlkafaween/grad.git
-cd grad
+git clone https://github.com/Hidra141/odosian-stack.git
+cd odosian-stack
 ./stack/build.sh
 ```
 

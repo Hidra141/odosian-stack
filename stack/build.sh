@@ -31,8 +31,8 @@ ODOSIAN_DIR="$REPO_ROOT/odosian"
 KUBEVISION_DIR="$REPO_ROOT/kubevision"
 ECK_CHART_DIR="$STACK_DIR/elastic-siem-chart"
 
-ODOSIAN_REPO="https://github.com/MohdAlkafaween/odosian.git"
-KUBEVISION_REPO="https://github.com/MohdAlkafaween/kubevision.git"
+ODOSIAN_REPO="https://github.com/Hidra141/odosian.git"
+KUBEVISION_REPO="https://github.com/Hidra141/kubevision.git"
 
 NERDCTL_VERSION="2.3.5"
 BUILDKIT_VERSION="0.31.2"

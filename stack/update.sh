@@ -18,8 +18,8 @@ REPO_ROOT="$(cd "$STACK_DIR/.." && pwd)"
 ODOSIAN_DIR="$REPO_ROOT/odosian"
 KUBEVISION_DIR="$REPO_ROOT/kubevision"
 
-ODOSIAN_REPO="https://github.com/MohdAlkafaween/odosian.git"
-KUBEVISION_REPO="https://github.com/MohdAlkafaween/kubevision.git"
+ODOSIAN_REPO="https://github.com/Hidra141/odosian.git"
+KUBEVISION_REPO="https://github.com/Hidra141/kubevision.git"
 
 log() { echo -e "\n\033[1;33m==> $1\033[0m"; }
 
